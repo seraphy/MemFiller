@@ -6,6 +6,9 @@
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	// コンソール出力か?
+	bool useConsole = _isatty(_fileno(stdout)) != 0;
+
 	// メモリ状況の取得
 	MEMORYSTATUSEX meminfo = {0};
 	meminfo.dwLength = sizeof(MEMORYSTATUSEX);
@@ -35,10 +38,16 @@ int _tmain(int argc, _TCHAR* argv[])
 		maxLoopCount = _ttoi(argv[1]);
 	}
 
+	// 現在のワーキングセットの取得
+	HANDLE hProcess = GetCurrentProcess();
+	SIZE_T curMinSize = 0;
+	SIZE_T curMaxSize = 0;
+	GetProcessWorkingSetSize(hProcess, &curMinSize, &curMaxSize);
+
 	// ワーキングセットの設定
-	size_t maxMem = (maxLoopCount + 1) * unit; // 1MB余分に確保
+	SIZE_T maxMem = (maxLoopCount + 1) * unit + curMaxSize;
 	if (!SetProcessWorkingSetSize(
-		GetCurrentProcess(), maxMem, maxMem)) {
+		hProcess, maxMem, maxMem)) {
 		_ftprintf(
 			stderr,
 			_T("SetProcessWorkingSetSizeEx: errorcode: %ld\n"),
@@ -46,9 +55,6 @@ int _tmain(int argc, _TCHAR* argv[])
 			);
 		// とりあえず継続してみる
 	}
-
-	// コンソール出力か?
-	bool useConsole = _isatty(_fileno(stdout)) != 0;
 
 	// メモリを最大まで確保する.
 	if (maxLoopCount > 0) {
